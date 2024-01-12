@@ -16,11 +16,11 @@
 - [ ] sample alpha
 - [ ] sample eta
 
-## Phase 3 mcmc implementation II
+## Phase 3 mcmc implementation II (Jan 26)
 - [ ] beta sampling
 - [ ] assignment sampling
 
-## Phase 4 Warp-up and testing
+## Phase 4 Warp-up and testing (Jan 31)
 - [ ] Test the program initially
 - [ ] Speed optimization
 - [ ] Warp it up as a software
