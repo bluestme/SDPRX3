@@ -1,10 +1,10 @@
 # new_SDPRX
 
 ## Phase 1 Data Read-in (Jan 15)
-- [ ] Review the previous read-in part
-- [ ] Modify the SNP matching part
+- [x] Review the previous read-in part
+- [x] Modify the SNP matching part
 - [ ] Get the code that generates data with overlap from 3 populations
-- [ ] Finish the part to generate the helper matrix
+- [x] Finish the part to generate the helper matrix
 
 ## Phase 2 mcmc implementation I (Jan 19)
 - [ ] update sufficient statistics
