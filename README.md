@@ -18,7 +18,7 @@
 
 ## Phase 3 mcmc implementation II (Jan 26)
 - [ ] beta sampling
-- [ ] assignment sampling
+- [x] assignment sampling
 
 ## Phase 4 Warp-up and testing (Jan 31)
 - [ ] Test the program initially
