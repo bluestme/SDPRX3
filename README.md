@@ -17,7 +17,7 @@
 - [x] sample eta
 
 ## Phase 3 mcmc implementation II (Jan 26)
-- [ ] beta sampling
+- [x] beta sampling
 - [x] assignment sampling
 
 ## Phase 4 Warp-up and testing (Jan 31)
