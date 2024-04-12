@@ -97,7 +97,7 @@ void div_block(const string &pfile1, const string &pfile2, const string &pfile3,
 
     size_t n_sample1 = get_nsamples(fam_path1.c_str());
     size_t n_sample2 = get_nsamples(fam_path2.c_str());
-    size_t n_sample3 = get_nsamples(fam_path2.c_str());
+    size_t n_sample3 = get_nsamples(fam_path3.c_str());
 
     for (size_t i = 0; i < 23; i++) 
     {
