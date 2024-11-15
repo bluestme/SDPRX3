@@ -69,52 +69,35 @@ void scaling_LD(gsl_matrix *snp)
     }
 }
 
-size_t* find_ld(gsl_matrix *snp1, gsl_matrix *snp2, gsl_matrix *snp3, double r2)
+size_t* find_ld(gsl_matrix *snp, double r2)
 {
-    double cor = 0, cor1 = 0, cor2 = 0, cor3 = 0; 
-    size_t nrow1 = snp1 -> size1, ncol1 = snp1 -> size2;
-    size_t ncol2 = snp2 -> size2, ncol3 = snp3 -> size2;
+    double cor = 0; 
+    size_t nrow = snp -> size1, ncol = snp -> size2;
 
-    size_t *max_list = new size_t[nrow1];
-    gsl_vector_view snp11, snp12, snp21, snp22, snp31, snp32;
+    size_t *max_list = new size_t[nrow];
+    gsl_vector_view snp1, snp2;
 
-    for (size_t i = 0; i < nrow1; i++) 
+    for (size_t i = 0; i < nrow; i++) 
     {
         size_t left;
         if (i < 300) left = 0;
-        else left = i - 300;
+        if (i >= 300) left = i - 300;
         max_list[i] = i;
 	    
-	    snp11 = gsl_matrix_row(snp1, i);
-        snp21 = gsl_matrix_row(snp2, i);
-        snp31 = gsl_matrix_row(snp3, i);
+	    snp1 = gsl_matrix_row(snp, i);
 
 	    for (size_t j = left; j < i + 300; j++) 
         {
-            if (j >= nrow1) continue;
-
-	        snp12 = gsl_matrix_row(snp1, j);
-            snp22 = gsl_matrix_row(snp2, j);
-            snp32 = gsl_matrix_row(snp3, j);
-
-	        gsl_blas_ddot(&snp11.vector, &snp12.vector, &cor1);
-            gsl_blas_ddot(&snp21.vector, &snp22.vector, &cor2);
-            gsl_blas_ddot(&snp31.vector, &snp32.vector, &cor3);
-
-	        cor1 /= ncol1;
-            cor2 /= ncol2;
-            cor3 /= ncol3;
-
-            cor = std::max(std::max(cor1, cor2), cor3);
-
+            if (j >= nrow) continue;
+	        snp2 = gsl_matrix_row(snp, j);
+	        gsl_blas_ddot(&snp1.vector, &snp2.vector, &cor);           
+	        cor /= ncol;
 	        if (cor * cor > r2) 
             {
                 max_list[i] = j;
-	        }
+            }
     	}
-
 	    if (i == 0) continue;
-
 	    if (max_list[i] < max_list[i - 1]) 
         {
 	        max_list[i] = max_list[i - 1];

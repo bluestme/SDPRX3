@@ -7,7 +7,7 @@ LIBS := -lgsl -lmkl_rt -lm -lpthread -ldl
 TARGET := SDPRX
 
 # Source files
-SRC := main.cpp mcmc.cpp parse_gen.cpp function_pool.cpp SDPRX_io.cpp LD.cpp
+SRC := main.cpp mcmc.cpp parse_gen.cpp LD.cpp SDPRX_io.cpp function_pool.cpp
 
 # Object files
 OBJ := $(SRC:.cpp=.o)

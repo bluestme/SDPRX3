@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 	double r2 = .1, rho1 = .8, rho2 = .8, rho3 = .8;
     int iter = 1000, burn = 200, thin = 1;
     int make_ref = 0, run_mcmc = 0;
-    int opt_llk = 1;
+    int opt_llk = 1, pop_ind = 2;
 
     // pass command line arguments
     int i = 1;
@@ -95,6 +95,11 @@ int main(int argc, char *argv[])
 		else if (strcmp(argv[i], "-rho3") == 0) 
 		{
 	    	rho3 = strtod(argv[i + 1], &end);
+	    	i += 2;
+		}
+		else if (strcmp(argv[i], "-pop_ind") == 0) 
+		{
+	    	pop_ind = strtod(argv[i + 1], &end);
 	    	i += 2;
 		}
 		else if (strcmp(argv[i], "-chr") == 0) 
@@ -343,7 +348,7 @@ int main(int argc, char *argv[])
 	    	cout << "Did not specify the prefix of the bim file for the reference panel for population 3." << endl;
 	    	return 0;
 		}
-		div_block(ref_prefix1, ref_prefix2, ref_prefix3, ref_dir, chr, n_threads, r2);
+		div_block(ref_prefix1, ref_prefix2, ref_prefix3, ref_dir, chr, n_threads, r2, pop_ind);
     }
 
     // mcmc 
@@ -402,18 +407,23 @@ int main(int argc, char *argv[])
 	    	return 0;
 		}
 
-		string ref_ldmat1 = ref_dir + "/chr" + \
-	       	std::to_string(chr) + "pop1.dat";
-		string ref_snpinfo = ref_dir + "/chr" + \
-	       std::to_string(chr) + ".snpInfo";
+		string ref_snpinfo1 = ref_dir + "/chr" + \
+	       std::to_string(chr) + "_1.snpInfo";
+	   string ref_snpinfo2 = ref_dir + "/chr" + \
+	       std::to_string(chr) + "_2.snpInfo";
+	   string ref_snpinfo3 = ref_dir + "/chr" + \
+	       std::to_string(chr) + "_3.snpInfo";
+
+	  string ref_ldmat1 = ref_dir + "/chr" + \
+	       std::to_string(chr) + "pop1.dat";
 		string ref_ldmat2 = ref_dir + "/chr" + \
 	       	std::to_string(chr) + "pop2.dat";
 		string ref_ldmat3 = ref_dir + "/chr" + \
 	       	std::to_string(chr) + "pop3.dat";
 		
 		cout << rho3 << endl;
-		mcmc(ref_snpinfo, ss_path1, ss_path2, ss_path3, valid_bim, ref_ldmat1, ref_ldmat2, ref_ldmat3, N1, N2, N3, \
-		out_path1, out_path2, out_path3, a, rho1, rho2, rho3, a0k, b0k, iter, burn, thin, n_threads, opt_llk, c1, c2, c3);
+		mcmc(ref_snpinfo1, ref_snpinfo2, ref_snpinfo3, ss_path1, ss_path2, ss_path3, valid_bim, ref_ldmat1, ref_ldmat2, ref_ldmat3, N1, N2, N3, \
+		out_path1, out_path2, out_path3, a, rho1, rho2, rho3, a0k, b0k, iter, burn, thin, n_threads, opt_llk, c1, c2, c3, pop_ind);
     }
     return 0;
 }

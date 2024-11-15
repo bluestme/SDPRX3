@@ -77,7 +77,7 @@ bool myCmp(const pair<size_t, size_t> &a, const pair<size_t, size_t> &b) {
 }
 
 void div_block(const string &pfile1, const string &pfile2, const string &pfile3, \
-               const string &out_dir, unsigned chrom, size_t n_thread, double r2) 
+               const string &out_dir, unsigned chrom, size_t n_thread, double r2, int pop_ind) 
 {
     string fam_path1 = pfile1 + ".fam";
     string bim_path1 = pfile1 + ".bim";
@@ -133,39 +133,36 @@ void div_block(const string &pfile1, const string &pfile2, const string &pfile3,
     std::vector<size_t> idx2;
     std::vector<size_t> idx3;
 
-    std::unordered_set<std::string> set1(snpinfo1.id.begin() + left1, snpinfo1.id.begin() + right1);
-    std::unordered_set<std::string> set2(snpinfo2.id.begin() + left2, snpinfo2.id.begin() + right2);
-    std::unordered_set<std::string> set3(snpinfo3.id.begin() + left3, snpinfo3.id.begin() + right3);
-
     size_t size_1 = 0; 
     size_t size_2 = 0;
     size_t size_3 = 0;
 
-    for (size_t i = left1; i < right1; i++) 
+    if (pop_ind == 2)
     {
-        if (set2.count(snpinfo1.id[i]) > 0 && set3.count(snpinfo1.id[i]) > 0) 
+        std::unordered_set<std::string> set2(snpinfo2.id.begin() + left2, snpinfo2.id.begin() + right2);
+        for (size_t i = left1; i < right1; i++) 
         {
-            idx1.push_back(i);
-            size_1++;
+            if (set2.count(snpinfo1.id[i]) > 0) {idx1.push_back(i); size_1++;}
+        }
+        for (size_t i = left2; i < right2; i++) {idx2.push_back(i); size_2++;}
+        for (size_t i = left3; i < right3; i++) 
+        {
+            if (set2.count(snpinfo3.id[i]) > 0) {idx3.push_back(i); size_3++;}
         }
     }
 
-    for (size_t i = left2; i < right2; i++) 
+    if (pop_ind == 3)
     {
-        if (set1.count(snpinfo2.id[i]) > 0 && set3.count(snpinfo2.id[i]) > 0) 
+        std::unordered_set<std::string> set3(snpinfo3.id.begin() + left3, snpinfo3.id.begin() + right3);
+        for (size_t i = left1; i < right1; i++) 
         {
-            idx2.push_back(i);
-            size_2++;
+            if (set3.count(snpinfo1.id[i]) > 0) {idx1.push_back(i); size_1++;}
         }
-    }
-
-    for (size_t i = left3; i < right3; i++) 
-    {
-        if (set1.count(snpinfo3.id[i]) > 0 && set2.count(snpinfo3.id[i]) > 0) 
+        for (size_t i = left2; i < right2; i++) 
         {
-            idx3.push_back(i);
-            size_3++;
+            if (set3.count(snpinfo2.id[i]) > 0) {idx2.push_back(i); size_2++;}
         }
+        for (size_t i = left3; i < right3; i++) {idx3.push_back(i); size_3++;}
     }
 
     gsl_matrix *snp1 = gsl_matrix_calloc(size_1, n_sample1);
@@ -177,61 +174,135 @@ void div_block(const string &pfile1, const string &pfile2, const string &pfile3,
     gsl_matrix *snp3 = gsl_matrix_calloc(size_3, n_sample3);
     read_bed(snp3, bed_path3, n_sample3, left3, right3, idx3);
 
-    std::vector<size_t> snp2_match = findMatchedId(snpinfo1, snpinfo2, idx1, idx2);
-    std::vector<size_t> snp3_match = findMatchedId(snpinfo1, snpinfo3, idx1, idx3);
-
-    for (size_t l = 0; l < snp2_match.size(); l++)
-    {
-        if (snpinfo1.A1[snp2_match[l]] == snpinfo2.A2[idx2[l]] && snpinfo1.A2[snp2_match[l]] == snpinfo2.A1[idx2[l]])
-        {
-            for (size_t ll = 0; ll < (snp2 -> size2); ll++) 
-            {
-                double oldValue = gsl_matrix_get(snp2, l, ll);
-                double newValue = - oldValue + 2.0;
-                gsl_matrix_set(snp2, l, ll, newValue);
-            }
-        }
-    }
-
-    for (size_t l = 0; l < snp3_match.size(); l++)
-    {
-        if (snpinfo1.A1[snp3_match[l]] == snpinfo3.A2[idx3[l]] && snpinfo1.A2[snp3_match[l]] == snpinfo3.A1[idx3[l]])
-        {
-            for (size_t ll = 0; ll < (snp3 -> size2); ll++) 
-            {
-                double oldValue = gsl_matrix_get(snp3, l, ll);
-                double newValue = - oldValue + 2.0;
-                gsl_matrix_set(snp3, l, ll, newValue);
-            }
-        }
-    }
-
     scaling_LD(snp1);
     scaling_LD(snp2);
     scaling_LD(snp3);
 
-    size_t *max_list = find_ld(snp1, snp2, snp3, r2);
+    size_t *max_list;
 
-    vector<pair<size_t, size_t>> boundary;
-    vector<pair<size_t, size_t>> blk_size;
-    size_t left_bound = 0, n_blk = 0;
-    for (size_t i = 0; i < size_1; i++) 
+    vector<pair<size_t, size_t>> boundary1;
+    vector<pair<size_t, size_t>> boundary2;
+    vector<pair<size_t, size_t>> boundary3;
+
+    vector<pair<size_t, size_t>> blk_size1;
+    vector<pair<size_t, size_t>> blk_size2;
+    vector<pair<size_t, size_t>> blk_size3;
+
+    size_t n_blk;
+
+    if (pop_ind == 2)
     {
-	    if (max_list[i] == i) 
+        max_list = find_ld(snp2, r2);
+        size_t left_bound = 0;
+        n_blk = 0;
+        for (size_t i = 0; i < size_2; i++) 
         {
-	        if (i + 1 - left_bound < 300 && i != size_1 - 1) continue;
-	        boundary.push_back(std::make_pair(left_bound, i + 1));
-	        blk_size.push_back(std::make_pair(n_blk, i + 1 - left_bound));
-	        left_bound = i + 1;
-	        n_blk++;
-	    }
+	        if (max_list[i] == i) 
+            {
+	            if (i + 1 - left_bound < 300 && i != size_2 - 1) continue;
+	            boundary2.push_back(std::make_pair(left_bound, i + 1));
+	            blk_size2.push_back(std::make_pair(n_blk, i + 1 - left_bound));
+	            left_bound = i + 1;
+	            n_blk++;
+	        }
+        }
+
+        size_t bd_left1 = 0;
+        size_t bd_left2 = 0;
+        size_t bd_right1 = 0;
+        size_t bd_right2 = 0;
+        for (size_t i = 0; i < n_blk; i++)
+        {
+            std::unordered_set<std::string> snpset(snpinfo2.id.begin() + boundary2[i].first + left2, \
+                                                   snpinfo2.id.begin() + boundary2[i].second + left2);
+            for (size_t j = bd_left1; j < idx1.size(); j++)
+            {
+                if (snpset.find(snpinfo1.id[idx1[j]]) != snpset.end()) bd_right1++;
+                if (snpset.find(snpinfo1.id[idx1[j]]) == snpset.end() || j == idx1.size() - 1)
+                {
+                    boundary1.push_back(std::make_pair(bd_left1, bd_right1));
+                    blk_size1.push_back(std::make_pair(i, bd_right1 - bd_left1));
+                    bd_left1 = bd_right1;
+                    break;
+                }
+            }
+
+            for (size_t j = bd_left2; j < idx3.size(); j++)
+            {
+                if (snpset.find(snpinfo3.id[idx3[j]]) != snpset.end()) bd_right2++;
+                if (snpset.find(snpinfo3.id[idx3[j]]) == snpset.end() || j == idx3.size() - 1)
+                {
+                    boundary3.push_back(std::make_pair(bd_left2, bd_right2));
+                    blk_size3.push_back(std::make_pair(i, right2 - bd_left2));
+                    bd_left2 = bd_right2;
+                    break;
+                }
+            }
+        }
+
+        std::sort(blk_size1.begin(), blk_size1.end(), myCmp);
+        std::sort(blk_size2.begin(), blk_size2.end(), myCmp);
+        std::sort(blk_size3.begin(), blk_size3.end(), myCmp);
     }
-    std::sort(blk_size.begin(), blk_size.end(), myCmp);
+    
+    if (pop_ind == 3)
+    {
+        max_list = find_ld(snp3, r2);
+        size_t left_bound = 0;
+        n_blk = 0;
+        for (size_t i = 0; i < size_3; i++) 
+        {
+	        if (max_list[i] == i) 
+            {
+	            if (i + 1 - left_bound < 300 && i != size_3 - 1) continue;
+	            boundary3.push_back(std::make_pair(left_bound, i + 1));
+	            blk_size3.push_back(std::make_pair(n_blk, i + 1 - left_bound));
+	            left_bound = i + 1;
+	            n_blk++;
+	        }
+        }
+
+        size_t bd_left1 = 0;
+        size_t bd_left2 = 0;
+        size_t bd_right1 = 0;
+        size_t bd_right2 = 0;
+        for (size_t i = 0; i < n_blk; i++)
+        {
+            std::unordered_set<std::string> snpset(snpinfo3.id.begin() + boundary3[i].first + left3, \
+                                                   snpinfo3.id.begin() + boundary3[i].second + left3);
+
+            for (size_t j = bd_left1; j < idx1.size(); j++)
+            {
+                if (snpset.find(snpinfo1.id[idx1[j]]) != snpset.end()) bd_right1++;
+                if (snpset.find(snpinfo1.id[idx1[j]]) == snpset.end() || j == idx1.size() - 1)
+                {
+                    boundary1.push_back(std::make_pair(bd_left1, bd_right1));
+                    blk_size1.push_back(std::make_pair(i, bd_right1 - bd_left1));
+                    bd_left1 = bd_right1;
+                    break;
+                }
+            }
+
+            for (size_t j = bd_left2; j < idx2.size(); j++)
+            {
+                if (snpset.find(snpinfo2.id[idx2[j]]) != snpset.end()) bd_right2++;
+                if (snpset.find(snpinfo2.id[idx2[j]]) == snpset.end() || j == idx2.size() - 1)
+                {
+                    boundary2.push_back(std::make_pair(bd_left2, bd_right2));
+                    blk_size2.push_back(std::make_pair(i, bd_right2 - bd_left2));
+                    bd_left2 = bd_right2;
+                    break;
+                }
+            }
+        }
+
+        std::sort(blk_size1.begin(), blk_size1.end(), myCmp);
+        std::sort(blk_size2.begin(), blk_size2.end(), myCmp);
+        std::sort(blk_size3.begin(), blk_size3.end(), myCmp);        
+    }    
     // blk_size: the first element is the number of block 
     // and the second is the size of the block
-
-    cout << "Divided into " << n_blk << " indpenent blocks with max size: " \
-	<< blk_size[0].second << endl;
+    cout << "Divided into " << n_blk << " indpenent blocks with max size for population1: " << blk_size1[0].second << " for population 2: " << blk_size2[0].second << " for population 3: " << blk_size3[0].second << endl;
 
     // calculate shrinkage ref ld mat
 
@@ -241,39 +312,54 @@ void div_block(const string &pfile1, const string &pfile2, const string &pfile3,
 
     for (size_t i = 0; i < n_blk; i++) 
     {
-        double blk_sizei = boundary[i].second - boundary[i].first;
+        double blk_sizei1 = boundary1[i].second - boundary1[i].first;
+        double blk_sizei2 = boundary2[i].second - boundary2[i].first;
+        double blk_sizei3 = boundary3[i].second - boundary3[i].first;
 
-	    ref_ld_mat1[i] = gsl_matrix_calloc(blk_sizei, blk_sizei);
-        
-        ref_ld_mat2[i] = gsl_matrix_calloc(blk_sizei, blk_sizei);
-        
-        ref_ld_mat3[i] = gsl_matrix_calloc(blk_sizei, blk_sizei);
+	    ref_ld_mat1[i] = gsl_matrix_calloc(blk_sizei1, blk_sizei1);
+        ref_ld_mat2[i] = gsl_matrix_calloc(blk_sizei2, blk_sizei2);
+        ref_ld_mat3[i] = gsl_matrix_calloc(blk_sizei3, blk_sizei3);
     }
 
     vector<thread> threads(n_thread);
     
-    unsigned *bin = new unsigned[n_thread];
+    unsigned *bin1 = new unsigned[n_thread];
+    unsigned *bin2 = new unsigned[n_thread];
+    unsigned *bin3 = new unsigned[n_thread];
 
     for (size_t i = 0; i < n_thread; i++) 
-    {
-	    bin[i] = 0;
+    { 
+        bin1[i] = 0; bin2[i] = 0; bin3[i] = 0;
     }
 
-    vector<size_t> *v = new vector<size_t> [n_thread];
+    vector<size_t> *v1 = new vector<size_t> [n_thread];
+    vector<size_t> *v2 = new vector<size_t> [n_thread];
+    vector<size_t> *v3 = new vector<size_t> [n_thread];
     
-    // binpacking to assign workitems to threads
     for (size_t i = 0; i < n_blk; i++) 
     {
-	    size_t idx = std::min_element(bin, bin + n_thread) - bin;
-	    bin[idx] += blk_size[i].second*blk_size[i].second;
-	    v[idx].push_back(blk_size[i].first);
+	    size_t idx = std::min_element(bin1, bin1 + n_thread) - bin1;
+	    bin1[idx] += blk_size1[i].second*blk_size1[i].second;
+	    v1[idx].push_back(blk_size1[i].first);
     }
-    // v: work item index
-    // bin: the load for each work, a matrix size for the block size
+
+    for (size_t i = 0; i < n_blk; i++)
+    {
+        size_t idx = std::min_element(bin2, bin2 + n_thread) - bin2;
+        bin2[idx] += blk_size2[i].second*blk_size2[i].second;
+	    v2[idx].push_back(blk_size2[i].first);
+    }
+
+    for (size_t i = 0; i < n_blk; i++)
+    {
+        size_t idx = std::min_element(bin3, bin3 + n_thread) - bin3;
+        bin3[idx] += blk_size3[i].second*blk_size3[i].second;
+	    v3[idx].push_back(blk_size3[i].first);
+    }
 
     for (size_t i = 0; i < n_thread; i++) 
     {
-	    threads[i] = thread(calc_ref_parallel, i, ref(v), ref(ref_ld_mat1), snp1, ref(boundary), n_sample1);
+	    threads[i] = thread(calc_ref_parallel, i, ref(v1), ref(ref_ld_mat1), snp1, ref(boundary1), n_sample1);
     }
     
     for (size_t i = 0; i < n_thread; i++) 
@@ -290,10 +376,10 @@ void div_block(const string &pfile1, const string &pfile2, const string &pfile3,
 	    gsl_matrix_free(ref_ld_mat1[i]);
     }
     fclose(f1);
-
+    
     for (size_t i = 0; i < n_thread; i++) 
     {
-	    threads[i] = thread(calc_ref_parallel, i, ref(v), ref(ref_ld_mat2), snp2, ref(boundary), n_sample2);
+	    threads[i] = thread(calc_ref_parallel, i, ref(v2), ref(ref_ld_mat2), snp2, ref(boundary2), n_sample2);
     }
     
     for (size_t i = 0; i < n_thread; i++) 
@@ -314,7 +400,7 @@ void div_block(const string &pfile1, const string &pfile2, const string &pfile3,
 
     for (size_t i = 0; i < n_thread; i++) 
     {
-	    threads[i] = thread(calc_ref_parallel, i, ref(v), ref(ref_ld_mat3), snp3, ref(boundary), n_sample3);
+	    threads[i] = thread(calc_ref_parallel, i, ref(v3), ref(ref_ld_mat3), snp3, ref(boundary3), n_sample3);
     }
     
     for (size_t i = 0; i < n_thread; i++) 
@@ -337,35 +423,81 @@ void div_block(const string &pfile1, const string &pfile2, const string &pfile3,
     gsl_matrix_free(snp2);
     gsl_matrix_free(snp3);
     
-    string out_snpinfo = out_dir + "/chr" + \
-			 std::to_string(chrom) + ".snpInfo";
-    ofstream out(out_snpinfo);
+    string out_snpinfo1 = out_dir + "/chr" + \
+			 std::to_string(chrom) + "_1.snpInfo";
+    ofstream out1(out_snpinfo1);
 
-    out << "start" << '\t' << "end" << endl;
+    out1 << "start" << '\t' << "end" << endl;
 
-    for (size_t i = 0; i < boundary.size(); i++) 
+    for (size_t i = 0; i < boundary1.size(); i++) 
     {
-	    out << boundary[i].first << '\t' << boundary[i].second << endl;
+	    out1 << boundary1[i].first << '\t' << boundary1[i].second << endl;
     }
 
-    out << endl;
+    out1 << endl;
 
-    out << "SNP" << '\t' << "A1" << '\t' << "A2" << endl;
+    out1 << "SNP" << '\t' << "A1" << '\t' << "A2" << endl;
     for (size_t i = 0; i < size_1; i++) 
     {
-	    out << snpinfo1.id[idx1[i]] << '\t' << snpinfo1.A1[idx1[i]] \
+	    out1 << snpinfo1.id[idx1[i]] << '\t' << snpinfo1.A1[idx1[i]] \
 	        << '\t' << snpinfo1.A2[idx1[i]] << endl;
-        if (snpinfo1.id[idx1[i]] != snpinfo2.id[idx2[i]])
-        {
-            cout << "wrong match!" << endl;
-        }
     }
-    out.close();
+    out1.close();
+
+    // =====================
+
+    string out_snpinfo2 = out_dir + "/chr" + \
+			 std::to_string(chrom) + "_2.snpInfo";
+    ofstream out2(out_snpinfo2);
+
+    out2 << "start" << '\t' << "end" << endl;
+
+    for (size_t i = 0; i < boundary2.size(); i++) 
+    {
+	    out2 << boundary2[i].first << '\t' << boundary2[i].second << endl;
+    }
+
+    out2 << endl;
+
+    out2 << "SNP" << '\t' << "A1" << '\t' << "A2" << endl;
+    for (size_t i = 0; i < size_2; i++) 
+    {
+	    out2 << snpinfo2.id[idx2[i]] << '\t' << snpinfo2.A1[idx2[i]] \
+	        << '\t' << snpinfo2.A2[idx2[i]] << endl;
+    }
+    out2.close();
+
+    // =====================
+
+    string out_snpinfo3 = out_dir + "/chr" + \
+			 std::to_string(chrom) + "_3.snpInfo";
+    ofstream out3(out_snpinfo3);
+
+    out3 << "start" << '\t' << "end" << endl;
+
+    for (size_t i = 0; i < boundary3.size(); i++) 
+    {
+	    out3 << boundary3[i].first << '\t' << boundary3[i].second << endl;
+    }
+
+    out3 << endl;
+
+    out3 << "SNP" << '\t' << "A1" << '\t' << "A2" << endl;
+    for (size_t i = 0; i < size_3; i++) 
+    {
+	    out3 << snpinfo3.id[idx3[i]] << '\t' << snpinfo3.A1[idx3[i]] \
+	        << '\t' << snpinfo3.A2[idx3[i]] << endl;
+    }
+    out3.close();
 
     delete[] max_list;
     delete[] ref_ld_mat1;
     delete[] ref_ld_mat2;
     delete[] ref_ld_mat3;
-    delete[] bin;
-    delete[] v;
+    delete[] bin1;
+    delete[] bin2;
+    delete[] bin3;
+    delete[] v1;
+    delete[] v2;
+    delete[] v3;
 }

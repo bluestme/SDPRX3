@@ -7,7 +7,7 @@ using std::string;
 
 
 void div_block(const string &pfile1, const string &pfile2, const string &pfile3, \
-				const string &out_dir, unsigned chrom, size_t n_thread, double r2);
+				const string &out_dir, unsigned chrom, size_t n_thread, double r2, int pop_ind);
 
 
 
