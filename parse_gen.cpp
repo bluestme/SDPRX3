@@ -12,6 +12,7 @@
 #include <math.h>
 #include <fstream>
 #include <sstream>
+#include <cstring>
 
 using std::ifstream; using std::string;
 using std::vector; using std::unordered_map; 
@@ -368,7 +369,7 @@ void parse_ld_mat(const string &ldmat_path, unordered_map<string, CoordInfo*> &r
 				gsl_matrix_set(tmp_mat_sub, j, k, tmp);
 	    	}
 		}
-
+		
 		dat.ref_ld_mat.push_back(tmp_mat_sub);
 		left = right;
 		gsl_matrix_free(tmp_mat);
